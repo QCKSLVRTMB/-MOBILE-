@@ -126,6 +126,149 @@ def mark_x(c):
     return f"{c} (X)" if c in EXCEL_COLS else c
 
 
+# ================== МОБИЛЬНЫЙ CSS ==================
+MOBILE_CSS = """
+<style>
+/* Базовый сброс отступов и горизонтального скролла страницы */
+html, body {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+}
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 2rem !important;
+}
+
+/* Общие крупные тап-таргеты (Android Material: >= 44px) */
+.stButton > button,
+.stDownloadButton > button {
+    min-height: 44px !important;
+    font-size: 1rem !important;
+    padding: 0.5rem 1rem !important;
+    border-radius: 10px !important;
+}
+button[kind="primary"] {
+    min-height: 44px !important;
+}
+
+/* Крупные чекбоксы */
+.stCheckbox label,
+.stRadio label {
+    font-size: 1rem !important;
+    padding: 4px 0 !important;
+    line-height: 1.4 !important;
+}
+
+/* Поля ввода: 16px предотвращает авто-зум на Android/iOS */
+input, select, textarea {
+    font-size: 16px !important;
+}
+
+/* Слайдер: крупный ползунок */
+.stSlider [data-baseweb="slider"] div[role="slider"] {
+    width: 24px !important;
+    height: 24px !important;
+}
+
+/* Expander: заголовок крупнее, отступы под палец */
+.streamlit-expanderHeader,
+details > summary {
+    font-size: 1rem !important;
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+}
+
+/* Уменьшаем межблочные отступы на мобильном */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.35rem !important;
+        line-height: 1.3 !important;
+    }
+    h2, .stSubheader {
+        font-size: 1.1rem !important;
+    }
+    h3 {
+        font-size: 1rem !important;
+    }
+    .block-container {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    /* Чекбоксы в 2 колонки не должны быть слишком узкими */
+    .stCheckbox {
+        padding-right: 4px !important;
+    }
+    /* Метрики: компактнее */
+    [data-testid="stMetricLabel"] {
+        font-size: 0.8rem !important;
+    }
+    [data-testid="stMetricValue"] {
+        font-size: 1.1rem !important;
+    }
+    /* Уменьшаем верхний отступ у экспандеров внутри фильтров */
+    details > div {
+        padding: 8px 6px !important;
+    }
+}
+
+/* Мобильная обёртка таблицы */
+.mobile-table-wrapper {
+    overflow: auto;
+    max-height: 70vh;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+.mobile-table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+}
+.mobile-table th {
+    padding: 8px 10px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    font-size: 0.85em;
+    text-align: left;
+    white-space: pre-line;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.mobile-table td {
+    padding: 8px 10px;
+    border: 1px solid #eee;
+    font-size: 0.85em;
+    white-space: nowrap;
+}
+/* Залипающая первая колонка (SECID) */
+.mobile-table th:first-child,
+.mobile-table td:first-child {
+    position: sticky;
+    left: 0;
+    box-shadow: 2px 0 4px rgba(0,0,0,0.08);
+}
+.mobile-table th:first-child {
+    z-index: 3;
+    background: #f5f5f5;
+}
+.mobile-table td:first-child {
+    z-index: 1;
+    background: #fff;
+}
+/* Ссылки в таблице — удобно тапать */
+.mobile-table a {
+    padding: 4px 2px;
+    display: inline-block;
+}
+</style>
+"""
+
+
 # ================== ГРУППЫ СТОЛБЦОВ ==================
 GROUP_EMOJI = {
     "Идентификация": "🆔", "Рынок": "📊", "Купон": "💵", "Сроки": "📅",
@@ -216,7 +359,6 @@ def display_name(col):
 
 
 def display_name_short(col):
-    """Название столбца без переносов — для selectbox сортировки."""
     return display_name(col).replace("\n", " ")
 
 
@@ -611,7 +753,7 @@ INT_COLS = {"Количество сделок", "Объем в бумагах",
             "Группа надёжности"}
 
 
-# ================== HTML-РЕНДЕР ==================
+# ================== HTML-РЕНДЕР (МОБИЛЬНЫЙ) ==================
 _COLOR_BG = {"green": "#c6efce", "yellow": "#ffeb9c", "red": "#ffc7ce"}
 _COLOR_FG = {"green": "#006100", "yellow": "#9c6500", "red": "#9c0006"}
 
@@ -635,29 +777,23 @@ def _fmt_cell(val, base_col):
 
 
 def render_html_table(df, tags, display_cols_map):
+    """Мобильная таблица: свайп-скролл, залипающая шапка и первая колонка."""
     headers = [display_cols_map[c] for c in df.columns]
-    th_style = ("padding:4px 8px; border:1px solid #ddd; "
-                "background:#f5f5f5; position:sticky; top:0; z-index:1; "
-                "white-space:pre-line; font-size:0.85em; text-align:left;")
-    parts = [
-        '<div style="overflow:auto; max-height:600px; '
-        'border:1px solid #ddd; border-radius:4px;">',
-        '<table style="border-collapse:collapse; font-size:0.85em; width:100%;">',
-        "<thead><tr>",
-    ]
+
+    parts = ['<div class="mobile-table-wrapper">', '<table class="mobile-table">', "<thead><tr>"]
     for h in headers:
-        parts.append(f'<th style="{th_style}">{_html.escape(h)}</th>')
+        parts.append(f"<th>{_html.escape(h)}</th>")
     parts.append("</tr></thead><tbody>")
 
     for idx, row in df.iterrows():
         parts.append("<tr>")
-        for col in df.columns:
+        for i, col in enumerate(df.columns):
             base_col = base_from_display(display_cols_map.get(col, col))
             val = row[col]
             color = tags.at[idx, col] if col in tags.columns else ""
             bg = _COLOR_BG.get(color, "")
             fg = _COLOR_FG.get(color, "")
-            td_style = "padding:3px 8px; border:1px solid #eee; white-space:nowrap;"
+            td_style = ""
             if bg:
                 td_style += f" background-color:{bg}; color:{fg};"
 
@@ -672,7 +808,9 @@ def render_html_table(df, tags, display_cols_map):
                     cell = ""
             else:
                 cell = _fmt_cell(val, base_col)
-            parts.append(f'<td style="{td_style}">{cell}</td>')
+
+            style_attr = f' style="{td_style}"' if td_style else ""
+            parts.append(f"<td{style_attr}>{cell}</td>")
         parts.append("</tr>")
     parts.append("</tbody></table></div>")
     return "".join(parts)
@@ -1323,26 +1461,35 @@ def apply_color_filter(res_df, tags_df, selected_colors):
     return res_df[match], tags_df[match]
 
 
-# ================== ВИДЖЕТЫ С КНОПКАМИ «−» / «+» ==================
-def float_slider_with_input(label_display, min_v, max_v, default, step, key,
-                            help_text="", is_excel=False, hint=""):
+# ================== ВИДЖЕТЫ (МОБИЛЬНАЯ ВЕРСИЯ) ==================
+def _sync_keys_init(key, default, clamp):
     slider_key = f"{key}_slider"
     num_key = f"{key}_num"
+    if slider_key not in st.session_state:
+        st.session_state[slider_key] = clamp(default)
+    else:
+        st.session_state[slider_key] = clamp(st.session_state[slider_key])
+    if num_key not in st.session_state:
+        st.session_state[num_key] = clamp(default)
+    else:
+        st.session_state[num_key] = clamp(st.session_state[num_key])
+    return slider_key, num_key
 
+
+def float_slider_with_input(label_display, min_v, max_v, default, step, key,
+                            help_text="", is_excel=False, hint=""):
+    """
+    Мобильная раскладка:
+      • Строка 1: [number_input] [−] [+]
+      • Строка 2: слайдер на всю ширину
+    """
     def _clamp(v):
         try:
             return float(min(max(float(v), float(min_v)), float(max_v)))
         except (TypeError, ValueError):
             return float(min_v)
 
-    if slider_key not in st.session_state:
-        st.session_state[slider_key] = _clamp(default)
-    else:
-        st.session_state[slider_key] = _clamp(st.session_state[slider_key])
-    if num_key not in st.session_state:
-        st.session_state[num_key] = _clamp(default)
-    else:
-        st.session_state[num_key] = _clamp(st.session_state[num_key])
+    slider_key, num_key = _sync_keys_init(key, default, _clamp)
 
     def _from_slider():
         st.session_state[num_key] = st.session_state[slider_key]
@@ -1368,45 +1515,35 @@ def float_slider_with_input(label_display, min_v, max_v, default, step, key,
         st.markdown(f"**{label_display}**")
     if hint:
         st.caption(hint)
-    col1, col2, col3, col4 = st.columns([3, 1.1, 0.4, 0.4])
-    with col1:
-        st.slider(" ", float(min_v), float(max_v),
-                  step=float(step), key=slider_key,
-                  on_change=_from_slider, help=help_text,
-                  label_visibility="collapsed")
-    with col2:
+
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
         st.number_input(" ", min_value=float(min_v), max_value=float(max_v),
                         step=float(step), key=num_key,
                         on_change=_from_num, format="%.2f",
                         help=help_text, label_visibility="collapsed")
-    with col3:
+    with c2:
         st.button("−", key=f"{key}_btn_minus", on_click=_dec,
                   use_container_width=True)
-    with col4:
+    with c3:
         st.button("+", key=f"{key}_btn_plus", on_click=_inc,
                   use_container_width=True)
+    st.slider(" ", float(min_v), float(max_v),
+              step=float(step), key=slider_key,
+              on_change=_from_slider, help=help_text,
+              label_visibility="collapsed")
     return float(st.session_state[slider_key])
 
 
 def int_slider_with_input(label_display, min_v, max_v, default, step, key,
                           help_text="", is_excel=False, hint=""):
-    slider_key = f"{key}_slider"
-    num_key = f"{key}_num"
-
     def _clamp(v):
         try:
             return int(min(max(int(v), int(min_v)), int(max_v)))
         except (TypeError, ValueError):
             return int(min_v)
 
-    if slider_key not in st.session_state:
-        st.session_state[slider_key] = _clamp(default)
-    else:
-        st.session_state[slider_key] = _clamp(st.session_state[slider_key])
-    if num_key not in st.session_state:
-        st.session_state[num_key] = _clamp(default)
-    else:
-        st.session_state[num_key] = _clamp(st.session_state[num_key])
+    slider_key, num_key = _sync_keys_init(key, default, _clamp)
 
     def _from_slider():
         st.session_state[num_key] = int(st.session_state[slider_key])
@@ -1432,23 +1569,23 @@ def int_slider_with_input(label_display, min_v, max_v, default, step, key,
         st.markdown(f"**{label_display}**")
     if hint:
         st.caption(hint)
-    col1, col2, col3, col4 = st.columns([3, 1.1, 0.4, 0.4])
-    with col1:
-        st.slider(" ", int(min_v), int(max_v),
-                  step=int(step), key=slider_key,
-                  on_change=_from_slider, help=help_text,
-                  label_visibility="collapsed")
-    with col2:
+
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
         st.number_input(" ", min_value=int(min_v), max_value=int(max_v),
                         step=int(step), key=num_key,
                         on_change=_from_num, format="%d",
                         help=help_text, label_visibility="collapsed")
-    with col3:
+    with c2:
         st.button("−", key=f"{key}_btn_minus", on_click=_dec,
                   use_container_width=True)
-    with col4:
+    with c3:
         st.button("+", key=f"{key}_btn_plus", on_click=_inc,
                   use_container_width=True)
+    st.slider(" ", int(min_v), int(max_v),
+              step=int(step), key=slider_key,
+              on_change=_from_slider, help=help_text,
+              label_visibility="collapsed")
     return int(st.session_state[slider_key])
 
 
@@ -1479,12 +1616,21 @@ def apply_preset(preset_name):
     st.toast(f"Пресет «{preset_name}» применён", icon="🎯")
 
 
-# ================== ИНТЕРФЕЙС ==================
-st.set_page_config(page_title="Скринер облигаций QCKSLVR TRADING", layout="wide")
-st.title("📊 Скринер облигаций QCKSLVR TRADING")
-st.markdown("Сообщество: [https://vk.ru/qckslvrtrading](https://vk.ru/qckslvrtrading)")
-st.caption("Столбцы и фильтры из Excel Доход.ру помечены «(X)». "
-           "Клик по SECID открывает карточку на analytics.dohod.ru.")
+# ================== ИНТЕРФЕЙС (MOBILE-FIRST) ==================
+st.set_page_config(
+    page_title="Скринер облигаций",
+    page_icon="📊",
+    layout="centered",       # центрированная раскладка — лучше для смартфона
+    initial_sidebar_state="collapsed",
+)
+st.markdown(MOBILE_CSS, unsafe_allow_html=True)
+
+st.title("📊 Скринер облигаций")
+st.caption(
+    "Сообщество: [vk.ru/qckslvrtrading](https://vk.ru/qckslvrtrading) · "
+    "Столбцы и фильтры из Excel Доход.ру помечены «(X)». "
+    "Таблицу можно листать свайпом по горизонтали."
+)
 
 # ================== ПАРАМЕТРЫ СТРАТЕГИИ ==================
 with st.expander("⚙️ Параметры стратегии", expanded=True):
@@ -1492,49 +1638,50 @@ with st.expander("⚙️ Параметры стратегии", expanded=True):
         "🎯 Пресет", ["—"] + list(PRESETS.keys()),
         key="flt_preset", help=HELP["preset_select"])
     if preset_name != "—":
-        if st.button("Применить пресет", key="apply_preset_btn"):
+        if st.button("✅ Применить пресет", key="apply_preset_btn",
+                     use_container_width=True):
             apply_preset(preset_name)
             st.rerun()
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        settlement_date = st.date_input(
-            "Дата расчёта", value=DEFAULT_DATE, key="flt_settlement_date",
-            help=HELP["settlement_date"])
-    with c2:
-        rate_change_pp = float_slider_with_input(
-            "Прогноз ставки ЦБ, п.п.", -5.0, 5.0, DEFAULT_RATE_FORECAST, 0.25,
-            key="flt_rate_change", help_text=HELP["rate_change_pp"])
-    with c3:
-        ndfl = float_slider_with_input(
-            "Ставка НДФЛ, %", 0.0, 30.0, DEFAULT_NDFL, 0.5,
-            key="flt_ndfl", help_text=HELP["ndfl"])
-    with c4:
-        cbr_rate = float_slider_with_input(
-            "Текущая ставка ЦБ, %", 0.0, 50.0, 0.0, 0.25,
-            key="flt_cbr_rate", help_text=HELP["cbr_rate"])
-    with c5:
-        uploaded_file = st.file_uploader(
-            "📎 Excel Доход.ру (X)", type=["xlsx", "xls"], key="flt_dohod_file",
-            help=HELP["uploaded_file"])
-        age = get_dohod_cache_age_days()
-        if DOHOD_FILE.exists() and uploaded_file is None:
-            if age is None:
-                st.caption("📁 Кеш Доход.ру.")
-            elif age > DOHOD_FRESH_DAYS:
-                st.warning(f"⚠️ Кеш: {age} дней.")
-            elif age == 0:
-                st.success("✅ Свежий кеш.")
-            else:
-                st.info(f"📁 Кеш: {age} дн.")
-        if DOHOD_FILE.exists() or DOHOD_META.exists():
-            st.button("🗑️ Удалить кеш", key="clear_cache_btn",
-                      on_click=clear_cache_callback, use_container_width=True)
+    st.markdown("---")
+
+    settlement_date = st.date_input(
+        "📅 Дата расчёта", value=DEFAULT_DATE, key="flt_settlement_date",
+        help=HELP["settlement_date"])
+
+    rate_change_pp = float_slider_with_input(
+        "Прогноз ставки ЦБ, п.п.", -5.0, 5.0, DEFAULT_RATE_FORECAST, 0.25,
+        key="flt_rate_change", help_text=HELP["rate_change_pp"])
+
+    ndfl = float_slider_with_input(
+        "Ставка НДФЛ, %", 0.0, 30.0, DEFAULT_NDFL, 0.5,
+        key="flt_ndfl", help_text=HELP["ndfl"])
+
+    cbr_rate = float_slider_with_input(
+        "Текущая ставка ЦБ, %", 0.0, 50.0, 0.0, 0.25,
+        key="flt_cbr_rate", help_text=HELP["cbr_rate"])
+
+    st.markdown("**📎 Excel Доход.ру (X)**")
+    uploaded_file = st.file_uploader(
+        "Загрузить Excel", type=["xlsx", "xls"], key="flt_dohod_file",
+        help=HELP["uploaded_file"], label_visibility="collapsed")
+    age = get_dohod_cache_age_days()
+    if DOHOD_FILE.exists() and uploaded_file is None:
+        if age is None:
+            st.caption("📁 Используется кеш Доход.ру.")
+        elif age > DOHOD_FRESH_DAYS:
+            st.warning(f"⚠️ Кеш устарел: {age} дней.")
+        elif age == 0:
+            st.success("✅ Свежий кеш (сегодня).")
+        else:
+            st.info(f"📁 Кеш от {age} дн. назад.")
+    if DOHOD_FILE.exists() or DOHOD_META.exists():
+        st.button("🗑️ Удалить кеш Доход.ру", key="clear_cache_btn",
+                  on_click=clear_cache_callback, use_container_width=True)
 
 # ================== ЗАГРУЗКА MOEX ==================
 sec_df, sec_why = load_securities()
-load_log = []
-load_log.append(f"securities: {len(sec_df)}" + (f" ({sec_why})" if sec_why else ""))
+load_log = [f"securities: {len(sec_df)}" + (f" ({sec_why})" if sec_why else "")]
 
 if sec_df.empty:
     st.error("securities пустой.")
@@ -1695,7 +1842,7 @@ if dohod_bytes:
 with st.spinner("Расчёт метрик..."):
     df = enrich(df, settlement_date, ndfl, rate_change_pp)
 
-# ================== ДИНАМИЧЕСКИЕ ФИЛЬТРЫ ==================
+# ================== ДИНАМИЧЕСКИЕ ОПЦИИ ==================
 currency_options = (sorted(df["Валюта номинала"].dropna().unique().tolist())
                     if "Валюта номинала" in df.columns else [])
 board_codes_present = (sorted(df["Режим торгов"].dropna().unique().tolist())
@@ -1716,7 +1863,8 @@ bond_type_options = (sorted(df["Тип бумаги"].dropna().astype(str).uniqu
                      if "Тип бумаги" in df.columns else [])
 
 
-def checkbox_group(options, key_prefix, default_selected, n_cols=2):
+def checkbox_group(options, key_prefix, default_selected, n_cols=1):
+    """На мобильном — 1 колонка. Для длинных списков — 2."""
     selected = []
     cols = st.columns(n_cols)
     for i, opt in enumerate(options):
@@ -1728,273 +1876,231 @@ def checkbox_group(options, key_prefix, default_selected, n_cols=2):
     return selected
 
 
-# ================== ФИЛЬТРЫ ПОД СТРАТЕГИЮ (сетка expander'ов) ==================
-with st.expander("🎯 Фильтры под стратегию", expanded=True):
+# ================== ФИЛЬТРЫ — всё вертикально ==================
+with st.expander("🎯 Фильтры под стратегию", expanded=False):
 
-    # --- Ряд 1: Рынок | Купон | Сроки ---
-    r1a, r1b, r1c = st.columns(3)
+    with st.expander("📊 Рынок", expanded=False):
+        only_with_price = st.checkbox(
+            "Только с ценой", value=True, key="flt_only_with_price",
+            help=HELP["only_with_price"])
+        only_discount = st.checkbox(
+            "Только дисконт", value=False, key="flt_only_discount",
+            help=HELP["only_discount"])
+        min_spread = float_slider_with_input(
+            "Мин. спред, %", 0.0, 5.0, 0.0, 0.05,
+            key="flt_min_spread", help_text=HELP["min_spread"])
+        max_spread = float_slider_with_input(
+            "Макс. спред, %", 0.0, 5.0, DEFAULT_MAX_SPREAD, 0.05,
+            key="flt_max_spread", help_text=HELP["max_spread"])
 
-    with r1a:
-        with st.expander("📊 Рынок", expanded=False):
-            only_with_price = st.checkbox(
-                "Только с ценой", value=True, key="flt_only_with_price",
-                help=HELP["only_with_price"])
-            only_discount = st.checkbox(
-                "Только дисконт", value=False, key="flt_only_discount",
-                help=HELP["only_discount"])
-            min_spread = float_slider_with_input(
-                "Мин. спред, %", 0.0, 5.0, 0.0, 0.05,
-                key="flt_min_spread", help_text=HELP["min_spread"])
-            max_spread = float_slider_with_input(
-                "Макс. спред, %", 0.0, 5.0, DEFAULT_MAX_SPREAD, 0.05,
-                key="flt_max_spread", help_text=HELP["max_spread"])
+    with st.expander("💵 Купон", expanded=False):
+        min_coupon = float_slider_with_input(
+            "Мин. ставка купона, %", 0.0, 50.0, 0.0, 0.5,
+            key="flt_min_coupon", help_text=HELP["min_coupon"])
+        max_coupon = float_slider_with_input(
+            "Макс. ставка купона, %", 0.0, 50.0, 50.0, 0.5,
+            key="flt_max_coupon", help_text=HELP["max_coupon"])
+        max_lot_cost = int_slider_with_input(
+            "Макс. сумма покупки лота", 0, 10_000_000, 0, 1000,
+            key="flt_max_lot_cost", help_text=HELP["max_lot_cost"])
 
-    with r1b:
-        with st.expander("💵 Купон", expanded=False):
-            min_coupon = float_slider_with_input(
-                "Мин. ставка купона, %", 0.0, 50.0, 0.0, 0.5,
-                key="flt_min_coupon", help_text=HELP["min_coupon"])
-            max_coupon = float_slider_with_input(
-                "Макс. ставка купона, %", 0.0, 50.0, 50.0, 0.5,
-                key="flt_max_coupon", help_text=HELP["max_coupon"])
-            max_lot_cost = int_slider_with_input(
-                "Макс. сумма покупки лота", 0, 10_000_000, 0, 1000,
-                key="flt_max_lot_cost", help_text=HELP["max_lot_cost"])
+    with st.expander("📅 Сроки", expanded=False):
+        min_days_maturity = int_slider_with_input(
+            "Мин. дней до погашения", 0, 7300, DEFAULT_MIN_DAYS, 30,
+            key="flt_min_days_maturity", help_text=HELP["min_days_maturity"])
+        max_days_maturity = int_slider_with_input(
+            "Макс. дней до погашения", 0, 10950, 0, 30,
+            key="flt_max_days_maturity", help_text=HELP["max_days_maturity"])
+        min_eff_days = int_slider_with_input(
+            "Мин. эффективный срок, дней", 0, 7300, 0, 30,
+            key="flt_min_eff_days", help_text=HELP["min_eff_days"])
+        max_eff_days = int_slider_with_input(
+            "Макс. эффективный срок, дней", 0, 10950, 0, 30,
+            key="flt_max_eff_days", help_text=HELP["max_eff_days"])
+        only_with_maturity = st.checkbox(
+            "Только с датой погашения", value=True,
+            key="flt_only_with_maturity", help=HELP["only_with_maturity"])
+        only_with_offer = st.checkbox(
+            "Только с офертой", value=False, key="flt_only_with_offer",
+            help=HELP["only_with_offer"])
 
-    with r1c:
-        with st.expander("📅 Сроки", expanded=False):
-            min_days_maturity = int_slider_with_input(
-                "Мин. дней до погашения", 0, 7300, DEFAULT_MIN_DAYS, 30,
-                key="flt_min_days_maturity", help_text=HELP["min_days_maturity"])
-            max_days_maturity = int_slider_with_input(
-                "Макс. дней до погашения", 0, 10950, 0, 30,
-                key="flt_max_days_maturity", help_text=HELP["max_days_maturity"])
-            min_eff_days = int_slider_with_input(
-                "Мин. эффективный срок, дней", 0, 7300, 0, 30,
-                key="flt_min_eff_days", help_text=HELP["min_eff_days"])
-            max_eff_days = int_slider_with_input(
-                "Макс. эффективный срок, дней", 0, 10950, 0, 30,
-                key="flt_max_eff_days", help_text=HELP["max_eff_days"])
-            only_with_maturity = st.checkbox(
-                "Только с датой погашения", value=True,
-                key="flt_only_with_maturity", help=HELP["only_with_maturity"])
-            only_with_offer = st.checkbox(
-                "Только с офертой", value=False, key="flt_only_with_offer",
-                help=HELP["only_with_offer"])
+    with st.expander("📈 Доходность и риск", expanded=False):
+        min_potential_return = float_slider_with_input(
+            "Мин. потенциальная доходность, %", -100.0, 100.0,
+            DEFAULT_MIN_POTENTIAL_RETURN, 0.5,
+            key="flt_min_potential_return", help_text=HELP["min_potential_return"])
+        max_duration = float_slider_with_input(
+            "Макс. дюрация, лет", 0.0, 10.0, DEFAULT_MAX_DURATION, 0.25,
+            key="flt_max_duration", help_text=HELP["max_duration"])
+        max_group = int_slider_with_input(
+            "Макс. группа надёжности", 1, 6, DEFAULT_MAX_GROUP, 1,
+            key="flt_max_group", help_text=HELP["max_group"])
+        only_with_ytm = st.checkbox(
+            "Только с YTM", value=False, key="flt_only_with_ytm",
+            help=HELP["only_with_ytm"])
+        min_ytm = float_slider_with_input(
+            "Мин. YTM, %", -50.0, 100.0, -50.0, 0.5, key="flt_min_ytm",
+            help_text=HELP["min_ytm"])
+        max_ytm = float_slider_with_input(
+            "Макс. YTM, %", -50.0, 200.0, 100.0, 1.0, key="flt_max_ytm",
+            help_text=HELP["max_ytm"])
+        min_net_ytm = float_slider_with_input(
+            "Мин. чистый YTM, %", -50.0, 100.0, -50.0, 0.5,
+            key="flt_min_net_ytm", help_text=HELP["min_net_ytm"])
 
-    # --- Ряд 2: Доходность и риск | Кредитное качество | Ликвидность ---
-    r2a, r2b, r2c = st.columns(3)
+    with st.expander("🏦 Кредитное качество (X)", expanded=False):
+        st.caption("Работает только если загружен Excel Доход.ру.")
+        min_credit_quality = float_slider_with_input(
+            "Мин. кредитное качество (X, из 10)", 0.0, 10.0,
+            DEFAULT_MIN_CREDIT_QUALITY, 0.5,
+            key="flt_min_credit_quality", is_excel=True,
+            help_text=HELP["min_credit_quality"])
+        min_issuer_quality = float_slider_with_input(
+            "Мин. качество эмитента (X, из 10)", 0.0, 10.0, 0.0, 0.5,
+            key="flt_min_issuer_quality", is_excel=True,
+            help_text=HELP["min_issuer_quality"])
+        min_inside_q = float_slider_with_input(
+            "Мин. Inside Q (X, из 10)", 0.0, 10.0, 0.0, 0.5,
+            key="flt_min_inside_q", is_excel=True,
+            help_text=HELP["min_inside_q"])
+        min_outside_q = float_slider_with_input(
+            "Мин. Outside Q (X, из 10)", 0.0, 10.0, 0.0, 0.5,
+            key="flt_min_outside_q", is_excel=True,
+            help_text=HELP["min_outside_q"])
+        min_netdebt = float_slider_with_input(
+            "Мин. NetDebt/Equity (X, из 10)", 0.0, 10.0, 0.0, 0.5,
+            key="flt_min_netdebt", is_excel=True,
+            help_text=HELP["min_netdebt"])
+        min_liquidity_k = float_slider_with_input(
+            "Мин. коэф. ликвидности (X, из 100)", 0.0, 100.0, 0.0, 1.0,
+            key="flt_min_liquidity_k", is_excel=True,
+            help_text=HELP["min_liquidity_k"])
+        max_complexity = float_slider_with_input(
+            "Макс. сложность (X, из 7)", 0, 7, DEFAULT_MAX_COMPLEXITY, 1,
+            key="flt_max_complexity", is_excel=True,
+            help_text=HELP["max_complexity"])
+        only_non_subordinated = st.checkbox(
+            "Только без субординации (X)", value=True,
+            key="flt_only_non_subordinated",
+            help=HELP["only_non_subordinated"])
+        only_with_guarantee = st.checkbox(
+            "Только с гарантией (X)", value=False,
+            key="flt_only_with_guarantee", help=HELP["only_with_guarantee"])
 
-    with r2a:
-        with st.expander("📈 Доходность и риск", expanded=False):
-            min_potential_return = float_slider_with_input(
-                "Мин. потенциальная доходность, %", -100.0, 100.0,
-                DEFAULT_MIN_POTENTIAL_RETURN, 0.5,
-                key="flt_min_potential_return", help_text=HELP["min_potential_return"])
-            max_duration = float_slider_with_input(
-                "Макс. дюрация, лет", 0.0, 10.0, DEFAULT_MAX_DURATION, 0.25,
-                key="flt_max_duration", help_text=HELP["max_duration"])
-            max_group = int_slider_with_input(
-                "Макс. группа надёжности", 1, 6, DEFAULT_MAX_GROUP, 1,
-                key="flt_max_group", help_text=HELP["max_group"])
-            only_with_ytm = st.checkbox(
-                "Только с YTM", value=False, key="flt_only_with_ytm",
-                help=HELP["only_with_ytm"])
-            min_ytm = float_slider_with_input(
-                "Мин. YTM, %", -50.0, 100.0, -50.0, 0.5, key="flt_min_ytm",
-                help_text=HELP["min_ytm"])
-            max_ytm = float_slider_with_input(
-                "Макс. YTM, %", -50.0, 200.0, 100.0, 1.0, key="flt_max_ytm",
-                help_text=HELP["max_ytm"])
-            min_net_ytm = float_slider_with_input(
-                "Мин. чистый YTM, %", -50.0, 100.0, -50.0, 0.5,
-                key="flt_min_net_ytm", help_text=HELP["min_net_ytm"])
+    with st.expander("💧 Ликвидность", expanded=False):
+        min_volume = int_slider_with_input(
+            "Мин. объём торгов", 0, 500_000_000, DEFAULT_MIN_VOLUME, 100_000,
+            key="flt_min_volume", help_text=HELP["min_volume"])
+        min_trades = int_slider_with_input(
+            "Мин. сделок за день", 0, 5000, DEFAULT_MIN_TRADES, 10,
+            key="flt_min_trades", help_text=HELP["min_trades"])
 
-    with r2b:
-        with st.expander("🏦 Кредитное качество (X)", expanded=False):
-            min_credit_quality = float_slider_with_input(
-                "Мин. кредитное качество (X, из 10)", 0.0, 10.0,
-                DEFAULT_MIN_CREDIT_QUALITY, 0.5,
-                key="flt_min_credit_quality", is_excel=True,
-                help_text=HELP["min_credit_quality"])
-            min_issuer_quality = float_slider_with_input(
-                "Мин. качество эмитента (X, из 10)", 0.0, 10.0, 0.0, 0.5,
-                key="flt_min_issuer_quality", is_excel=True,
-                help_text=HELP["min_issuer_quality"])
-            min_inside_q = float_slider_with_input(
-                "Мин. Inside Q (X, из 10)", 0.0, 10.0, 0.0, 0.5,
-                key="flt_min_inside_q", is_excel=True,
-                help_text=HELP["min_inside_q"])
-            min_outside_q = float_slider_with_input(
-                "Мин. Outside Q (X, из 10)", 0.0, 10.0, 0.0, 0.5,
-                key="flt_min_outside_q", is_excel=True,
-                help_text=HELP["min_outside_q"])
-            min_netdebt = float_slider_with_input(
-                "Мин. NetDebt/Equity (X, из 10)", 0.0, 10.0, 0.0, 0.5,
-                key="flt_min_netdebt", is_excel=True,
-                help_text=HELP["min_netdebt"])
-            min_liquidity_k = float_slider_with_input(
-                "Мин. коэф. ликвидности (X, из 100)", 0.0, 100.0, 0.0, 1.0,
-                key="flt_min_liquidity_k", is_excel=True,
-                help_text=HELP["min_liquidity_k"])
-            max_complexity = float_slider_with_input(
-                "Макс. сложность (X, из 7)", 0, 7, DEFAULT_MAX_COMPLEXITY, 1,
-                key="flt_max_complexity", is_excel=True,
-                help_text=HELP["max_complexity"])
-            only_non_subordinated = st.checkbox(
-                "Только без субординации (X)", value=True,
-                key="flt_only_non_subordinated",
-                help=HELP["only_non_subordinated"])
-            only_with_guarantee = st.checkbox(
-                "Только с гарантией (X)", value=False,
-                key="flt_only_with_guarantee", help=HELP["only_with_guarantee"])
+    with st.expander("🌍 Валюта и режимы", expanded=False):
+        currency_filter = st.multiselect(
+            "Валюта номинала", currency_options,
+            default=[c for c in currency_options if c in ("SUR", "RUB")],
+            key="flt_currency_filter", help=HELP["currency_filter"])
+        selected_board_labels = st.multiselect(
+            "Режим торгов", board_options_labels,
+            default=[l for l in board_options_labels
+                     if board_label_map[l] in ("TQCB", "TQOB")],
+            key="flt_board_filter", help=HELP["board_filter"])
+        board_filter = [board_label_map[l] for l in selected_board_labels]
 
-    with r2c:
-        with st.expander("💧 Ликвидность", expanded=False):
-            min_volume = int_slider_with_input(
-                "Мин. объём торгов", 0, 500_000_000, DEFAULT_MIN_VOLUME, 100_000,
-                key="flt_min_volume", help_text=HELP["min_volume"])
-            min_trades = int_slider_with_input(
-                "Мин. сделок за день", 0, 5000, DEFAULT_MIN_TRADES, 10,
-                key="flt_min_trades", help_text=HELP["min_trades"])
-
-    # --- Ряд 3: Валюта и режимы | Отрасль | Тип эмитента ---
-    r3a, r3b, r3c = st.columns(3)
-
-    with r3a:
-        with st.expander("🌍 Валюта и режимы", expanded=False):
-            currency_filter = st.multiselect(
-                "Валюта номинала", currency_options,
-                default=[c for c in currency_options if c in ("SUR", "RUB")],
-                key="flt_currency_filter", help=HELP["currency_filter"])
-            selected_board_labels = st.multiselect(
-                "Режим торгов", board_options_labels,
-                default=[l for l in board_options_labels
-                         if board_label_map[l] in ("TQCB", "TQOB")],
-                key="flt_board_filter", help=HELP["board_filter"])
-            board_filter = [board_label_map[l] for l in selected_board_labels]
-
-    with r3b:
+    if industry_options:
         with st.expander("🆔 Отрасль (X)", expanded=False):
             st.caption(HELP["industries"])
-            if industry_options:
-                industries = checkbox_group(industry_options, "flt_industry", [], n_cols=2)
-            else:
-                st.caption("— нет данных —")
-                industries = []
+            industries = checkbox_group(industry_options, "flt_industry", [], n_cols=2)
+    else:
+        industries = []
 
-    with r3c:
+    if issuer_types_options:
         with st.expander("🆔 Тип эмитента (X)", expanded=False):
             st.caption(HELP["issuer_types"])
-            if issuer_types_options:
-                issuer_types = checkbox_group(issuer_types_options, "flt_issuer_type", [], n_cols=1)
-            else:
-                st.caption("— нет данных —")
-                issuer_types = []
+            issuer_types = checkbox_group(issuer_types_options, "flt_issuer_type", [], n_cols=1)
+    else:
+        issuer_types = []
 
-    # --- Ряд 4: Уровень листинга | Тип купона | Тип номинала ---
-    r4a, r4b, r4c = st.columns(3)
+    with st.expander("🆔 Уровень листинга", expanded=False):
+        st.caption(HELP["list_levels"])
+        list_levels = checkbox_group(list_levels_options, "flt_list_levels",
+                                     list_levels_options, n_cols=3)
 
-    with r4a:
-        with st.expander("🆔 Уровень листинга", expanded=False):
-            st.caption(HELP["list_levels"])
-            if list_levels_options:
-                list_levels = checkbox_group(list_levels_options, "flt_list_levels",
-                                             list_levels_options, n_cols=3)
-            else:
-                st.caption("— нет данных —")
-                list_levels = []
-
-    with r4b:
+    if coupon_type_options:
         with st.expander("💵 Тип купона", expanded=False):
             st.caption(HELP["coupon_type_filter"])
-            if coupon_type_options:
-                coupon_type_filter = checkbox_group(coupon_type_options, "flt_coupon_type", [], n_cols=2)
-            else:
-                st.caption("— нет данных —")
-                coupon_type_filter = []
+            coupon_type_filter = checkbox_group(coupon_type_options, "flt_coupon_type", [], n_cols=1)
+    else:
+        coupon_type_filter = []
 
-    with r4c:
+    if face_type_options:
         with st.expander("💵 Тип номинала", expanded=False):
             st.caption(HELP["face_type_filter"])
-            if face_type_options:
-                face_type_filter = checkbox_group(face_type_options, "flt_face_type", [], n_cols=2)
-            else:
-                st.caption("— нет данных —")
-                face_type_filter = []
+            face_type_filter = checkbox_group(face_type_options, "flt_face_type", [], n_cols=1)
+    else:
+        face_type_filter = []
 
-    # --- Ряд 5: Тип бумаги | Макро | Общий цветовой фильтр ---
-    r5a, r5b, r5c = st.columns(3)
-
-    with r5a:
+    if bond_type_options:
         with st.expander("🆔 Тип бумаги", expanded=False):
             st.caption("Фильтр по метке: Флоатер, Фикс, Амортизируемая, Суборд и т.д.")
-            if bond_type_options:
-                bond_type_filter = checkbox_group(bond_type_options, "flt_bond_type", [], n_cols=1)
-            else:
-                st.caption("— нет данных —")
-                bond_type_filter = []
+            bond_type_filter = checkbox_group(bond_type_options, "flt_bond_type", [], n_cols=1)
+    else:
+        bond_type_filter = []
 
-    with r5b:
-        with st.expander("🌍 Макро", expanded=False):
-            keep_na = st.checkbox(
-                "Показывать бумаги без данных", value=False, key="flt_keep_na",
-                help=HELP["keep_na"])
+    with st.expander("🌍 Макро", expanded=False):
+        keep_na = st.checkbox(
+            "Показывать бумаги без данных", value=False, key="flt_keep_na",
+            help=HELP["keep_na"])
 
-    with r5c:
-        with st.expander("🎨 Фильтр по цветам (общий)", expanded=False):
-            color_filter_on = st.checkbox(
-                "Применить фильтр по цвету", value=False, key="flt_color_on",
-                help=HELP["color_filter_on"])
-            show_green = st.checkbox("🟢 Зелёные", value=True,
-                                     key="flt_color_green", help=HELP["show_green"])
-            show_yellow = st.checkbox("🟡 Жёлтые", value=True,
-                                      key="flt_color_yellow", help=HELP["show_yellow"])
-            show_red = st.checkbox("🔴 Красные", value=True,
-                                   key="flt_color_red", help=HELP["show_red"])
-            show_uncolored = st.checkbox("⚪ Без подсветки", value=True,
-                                         key="flt_color_uncolored",
-                                         help=HELP["show_uncolored"])
+    with st.expander("🎨 Фильтр по цветам (общий)", expanded=False):
+        color_filter_on = st.checkbox(
+            "Применить фильтр по цвету", value=False, key="flt_color_on",
+            help=HELP["color_filter_on"])
+        show_green = st.checkbox("🟢 Зелёные", value=True,
+                                 key="flt_color_green", help=HELP["show_green"])
+        show_yellow = st.checkbox("🟡 Жёлтые", value=True,
+                                  key="flt_color_yellow", help=HELP["show_yellow"])
+        show_red = st.checkbox("🔴 Красные", value=True,
+                               key="flt_color_red", help=HELP["show_red"])
+        show_uncolored = st.checkbox("⚪ Без подсветки", value=True,
+                                     key="flt_color_uncolored",
+                                     help=HELP["show_uncolored"])
 
-    # --- Ряд 6: Фильтр по цвету столбца ---
-    r6a, _, _ = st.columns(3)
-    with r6a:
-        with st.expander("🎨 Фильтр по цвету столбца", expanded=False):
-            color_col_filter_on = st.checkbox(
-                "Применить фильтр", value=False,
-                key="flt_color_col_on", help=HELP["color_col_filter_on"])
-            color_col_name = st.selectbox(
-                "Столбец",
-                [
-                    "Спред, %",
-                    "Потенциальная доходность, %",
-                    "YTM, %", "Чистый YTM, %", "YTC, %",
-                    "Текущая доходность, %", "Простая доходность, %",
-                    "Дюрация, лет",
-                    "Кредитное качество", "Качество эмитента",
-                    "Группа надёжности",
-                    "Объем в валюте", "Количество сделок",
-                    "Рыночный риск, %",
-                    "Тип бумаги",
-                ],
-                key="flt_color_col_name",
-            )
-            color_col_colors = st.multiselect(
-                "Оставить строки с цветом",
-                options=["green", "yellow", "red", "uncolored"],
-                default=["green"],
-                format_func=lambda x: {
-                    "green": "🟢 Зелёные",
-                    "yellow": "🟡 Жёлтые",
-                    "red": "🔴 Красные",
-                    "uncolored": "⚪ Без подсветки",
-                }.get(x, x),
-                key="flt_color_col_colors",
-            )
+    with st.expander("🎨 Фильтр по цвету столбца", expanded=False):
+        color_col_filter_on = st.checkbox(
+            "Применить фильтр", value=False,
+            key="flt_color_col_on", help=HELP["color_col_filter_on"])
+        color_col_name = st.selectbox(
+            "Столбец",
+            [
+                "Спред, %",
+                "Потенциальная доходность, %",
+                "YTM, %", "Чистый YTM, %", "YTC, %",
+                "Текущая доходность, %", "Простая доходность, %",
+                "Дюрация, лет",
+                "Кредитное качество", "Качество эмитента",
+                "Группа надёжности",
+                "Объем в валюте", "Количество сделок",
+                "Рыночный риск, %",
+                "Тип бумаги",
+            ],
+            key="flt_color_col_name",
+        )
+        color_col_colors = st.multiselect(
+            "Оставить строки с цветом",
+            options=["green", "yellow", "red", "uncolored"],
+            default=["green"],
+            format_func=lambda x: {
+                "green": "🟢 Зелёные",
+                "yellow": "🟡 Жёлтые",
+                "red": "🔴 Красные",
+                "uncolored": "⚪ Без подсветки",
+            }.get(x, x),
+            key="flt_color_col_colors",
+        )
 
-    st.markdown("---")
     st.button("🔄 Сбросить к параметрам стратегии",
-              key="reset_btn",
+              key="reset_btn", use_container_width=True,
               on_click=reset_button_callback, help=HELP["reset_btn"])
 
 # ================== ПРИМЕНЕНИЕ ФИЛЬТРОВ ==================
@@ -2037,7 +2143,7 @@ opts = {
 filtered = apply_filters(df, opts)
 
 # ================== СЛУЖЕБНЫЙ СПОЙЛЕР ==================
-with st.expander("ℹ️ Справочная информация и служебные блоки", expanded=False):
+with st.expander("ℹ️ Справочная информация", expanded=False):
     st.markdown("### 📖 Методология Доход.ру")
     st.markdown("""
     Доход.ру считает доходности по собственной модели, отличной от MOEX.
@@ -2054,11 +2160,9 @@ with st.expander("ℹ️ Справочная информация и служе
 
     st.markdown("### 🎨 Легенда цветов")
     st.markdown("""
-    **(X)** — столбец или фильтр из Excel Доход.ру.
-
     | Столбец | 🟢 | 🟡 | 🔴 |
     |---|---|---|---|
-    | Потенциальная доходность | ≥ ЦБ | — | < 0 |
+    | Потенц. доходность | ≥ ЦБ | — | < 0 |
     | YTM, Чистый YTM, YTC, Текущая, Простая | ≥ ЦБ | — | < 0 |
     | Ставка купона | ≥ ЦБ | — | < 5% |
     | Дюрация, лет | ≤ 1 | 1…макс | > макс |
@@ -2104,38 +2208,35 @@ with st.expander("ℹ️ Справочная информация и служе
     if rows:
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    st.markdown("### 📈 Тип доходности для сортировки и отображения")
+    st.markdown("### 📈 Тип доходности для сортировки")
     income_type = st.radio(
         "Какую доходность показывать и по ней сортировать:",
         list(INCOME_TYPE_MAP.keys()),
-        index=3, horizontal=True, key="view_income_type",
+        index=3, horizontal=False, key="view_income_type",
         help=HELP["income_type"])
     income_col = INCOME_TYPE_MAP[income_type]
 
-# ================== «НАЙДЕНО» НАД ТАБЛИЦЕЙ ==================
+# ================== «НАЙДЕНО» ==================
 st.subheader(f"📊 Найдено: {len(filtered)} из {len(df)}")
 
 # ================== СОРТИРОВКА ==================
-st.markdown("### 🔀 Сортировка")
+with st.expander("🔀 Сортировка", expanded=False):
+    numeric_or_date_cols = [
+        c for c in filtered.columns
+        if pd.api.types.is_numeric_dtype(filtered[c])
+        or pd.api.types.is_datetime64_any_dtype(filtered[c])
+    ]
+    if not numeric_or_date_cols:
+        numeric_or_date_cols = list(filtered.columns)
 
-numeric_or_date_cols = [
-    c for c in filtered.columns
-    if pd.api.types.is_numeric_dtype(filtered[c])
-    or pd.api.types.is_datetime64_any_dtype(filtered[c])
-]
-if not numeric_or_date_cols:
-    numeric_or_date_cols = list(filtered.columns)
+    sort_display_map = {display_name_short(c): c for c in numeric_or_date_cols}
+    sort_display_list = list(sort_display_map.keys())
 
-sort_display_map = {display_name_short(c): c for c in numeric_or_date_cols}
-sort_display_list = list(sort_display_map.keys())
+    _default_sort_key = income_col if income_col in numeric_or_date_cols else numeric_or_date_cols[0]
+    _default_sort_display = display_name_short(_default_sort_key)
+    _default_idx = (sort_display_list.index(_default_sort_display)
+                    if _default_sort_display in sort_display_list else 0)
 
-_default_sort_key = income_col if income_col in numeric_or_date_cols else numeric_or_date_cols[0]
-_default_sort_display = display_name_short(_default_sort_key)
-_default_idx = (sort_display_list.index(_default_sort_display)
-                if _default_sort_display in sort_display_list else 0)
-
-sort_col_1, sort_col_2 = st.columns([3, 1])
-with sort_col_1:
     sort_by_display = st.selectbox(
         "Столбец",
         sort_display_list,
@@ -2143,11 +2244,12 @@ with sort_col_1:
         key="view_sort_by",
     )
     sort_by = sort_display_map[sort_by_display]
-with sort_col_2:
+
     sort_asc = st.radio(
         "Направление",
         ["↓ Убыв.", "↑ Возр."],
         index=0,
+        horizontal=True,
         key="view_sort_dir",
     )
 
@@ -2180,32 +2282,33 @@ if (color_col_filter_on and color_col_name
 
 # ================== ВЫБОР СТОЛБЦОВ ==================
 with st.expander("📋 Столбцы для отображения", expanded=False):
-    st.caption("Столбцы сгруппированы эмодзи-префиксом. "
-               "Столбцы с (X) — из файла Доход.ру.")
+    st.caption("Столбцы с (X) — из файла Доход.ру.")
     selected_cols = []
     for group_name, group_cols in COLUMN_GROUPS.items():
         available_in_group = [c for c in group_cols if c in filtered.columns]
         if not available_in_group:
             continue
         if "(X)" in group_name:
-            st.markdown(f"<span style='color:#28a745;font-weight:700;'>{group_name}</span>",
-                        unsafe_allow_html=True)
+            st.markdown(
+                f"<span style='color:#28a745;font-weight:700;'>{group_name}</span>",
+                unsafe_allow_html=True)
         else:
             st.markdown(f"**{group_name}**")
-        cols_layout = st.columns(3)
+        # На мобильном — 2 колонки макс (схлопнется в 1 при необходимости)
+        cols_layout = st.columns(2)
         for i, c in enumerate(available_in_group):
             key = f"colsel_{c}"
             label = mark_x(c)
             help_text = COLUMN_HELP.get(c, "")
-            checked = cols_layout[i % 3].checkbox(
+            checked = cols_layout[i % 2].checkbox(
                 label, value=(c in DEFAULT_VISIBLE_COLS), key=key,
                 help=help_text)
             if checked:
                 selected_cols.append(c)
 
 use_colors = st.checkbox(
-    "🎨 Красить ячейки",
-    value=True, key="view_use_colors", help=HELP["use_colors"])
+    "🎨 Красить ячейки", value=True, key="view_use_colors",
+    help=HELP["use_colors"])
 
 if income_col in filtered.columns and income_col not in selected_cols:
     selected_cols.insert(0, income_col)
@@ -2224,6 +2327,8 @@ else:
     if not use_colors:
         tags_display = pd.DataFrame("", index=res.index, columns=res.columns)
 
+    st.caption("👉 Листайте таблицу пальцем по горизонтали. "
+               "Первая колонка и шапка закреплены.")
     html_table = render_html_table(res, tags_display, display_cols)
     st.markdown(html_table, unsafe_allow_html=True)
 
@@ -2234,12 +2339,12 @@ export_df_full = export_df_full.rename(columns={c: mark_x(c) for c in export_df_
 
 csv = export_df_full.to_csv(index=False).encode("utf-8-sig")
 st.download_button(
-    "📥 Скачать CSV (полный набор для дашборда)",
+    "📥 Скачать CSV",
     csv,
     "moex_bonds_dashboard.csv",
     "text/csv",
-    help="Содержит все доступные столбцы из MOEX securities, marketdata, "
-         "Доход.ру и расчётные метрики. Столбцы Доход.ру помечены (X).",
+    use_container_width=True,
+    help="Полный набор столбцов. Столбцы Доход.ру помечены (X).",
 )
 
 with st.expander("🔍 Все столбцы, попадающие в CSV", expanded=False):
@@ -2250,7 +2355,7 @@ with st.expander("🔍 Все столбцы, попадающие в CSV", expa
 # ================== СВОДКА ==================
 if not filtered.empty:
     st.markdown("### 📊 Сводка")
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2 = st.columns(2)
     if income_col in filtered.columns:
         s = filtered[income_col].dropna()
         if not s.empty:
@@ -2259,17 +2364,14 @@ if not filtered.empty:
     if "Дюрация, лет" in filtered.columns:
         d = filtered["Дюрация, лет"].dropna()
         if not d.empty:
-            c3.metric("Средняя дюрация", f"{d.mean():.2f} лет")
-            c4.metric("Медианная дюрация", f"{d.median():.2f} лет")
+            c1.metric("Средняя дюрация", f"{d.mean():.2f} лет")
+            c2.metric("Медианная дюрация", f"{d.median():.2f} лет")
 
-    col_l, col_r = st.columns(2)
     if "Группа надёжности" in filtered.columns:
-        with col_l:
-            st.caption("**Группы надёжности**")
-            st.dataframe(filtered["Группа надёжности"].value_counts().sort_index()
-                         .rename("Количество"), use_container_width=True)
+        st.caption("**Группы надёжности**")
+        st.dataframe(filtered["Группа надёжности"].value_counts().sort_index()
+                     .rename("Количество"), use_container_width=True)
     if "Отрасль" in filtered.columns:
-        with col_r:
-            st.caption("**Отрасли (X)**")
-            st.dataframe(filtered["Отрасль"].value_counts().head(15)
-                         .rename("Количество"), use_container_width=True)
+        st.caption("**Отрасли (X)**")
+        st.dataframe(filtered["Отрасль"].value_counts().head(15)
+                     .rename("Количество"), use_container_width=True)
